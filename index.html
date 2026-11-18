@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>星河追梦 · 深空行星</title>
+<meta name="description" content="两个实时 3D 场景：雨天滨海公路与长征五号发射工位、太阳与八大行星。three.js 单文件，浏览器直接运行。">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #e8eef6;
+    --dim: #8fa2b8;
+    --line: rgba(140, 180, 230, .18);
+    --card: rgba(12, 20, 32, .72);
+    --accent: #6fa8ff;
+  }
+  html, body { height: 100%; }
+  body {
+    background: #05080e;
+    color: var(--ink);
+    font: 15px/1.7 "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    overflow-x: hidden;
+  }
+  /* 背景：一层星野 + 一层地平线辉光 */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -2;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(40, 90, 160, .38), transparent 70%),
+      radial-gradient(900px 500px at 85% 110%, rgba(160, 80, 40, .20), transparent 70%),
+      radial-gradient(700px 400px at 10% 105%, rgba(30, 60, 110, .28), transparent 70%);
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: -1; opacity: .55;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, #fff, transparent),
+      radial-gradient(1px 1px at 28% 42%, rgba(255,255,255,.8), transparent),
+      radial-gradient(1px 1px at 46% 12%, #fff, transparent),
+      radial-gradient(1px 1px at 63% 55%, rgba(255,255,255,.7), transparent),
+      radial-gradient(1px 1px at 78% 26%, #fff, transparent),
+      radial-gradient(1px 1px at 88% 62%, rgba(255,255,255,.75), transparent),
+      radial-gradient(1px 1px at 8% 72%, rgba(255,255,255,.6), transparent),
+      radial-gradient(1px 1px at 36% 82%, rgba(255,255,255,.55), transparent),
+      radial-gradient(1px 1px at 56% 88%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1px 1px at 94% 84%, rgba(255,255,255,.65), transparent);
+  }
+  header { padding: 64px 28px 8px; text-align: center; }
+  h1 {
+    font-size: clamp(26px, 4.6vw, 44px); font-weight: 600; letter-spacing: .16em;
+    background: linear-gradient(180deg, #fff, #9db9d8);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub { margin-top: 14px; color: var(--dim); font-size: 14px; letter-spacing: .08em; }
+  main {
+    flex: 1; display: grid; gap: 26px; padding: 44px 28px 60px;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    max-width: 1180px; width: 100%; margin: 0 auto; align-items: stretch;
+  }
+  a.card {
+    position: relative; display: flex; flex-direction: column; overflow: hidden;
+    border: 1px solid var(--line); border-radius: 16px; text-decoration: none; color: inherit;
+    background: var(--card); backdrop-filter: blur(10px);
+    transition: transform .25s cubic-bezier(.2,.7,.3,1), border-color .25s, box-shadow .25s;
+  }
+  a.card:hover { transform: translateY(-4px); border-color: rgba(140,190,255,.55); box-shadow: 0 20px 50px rgba(0,0,0,.55); }
+  a.card:active { transform: translateY(-1px); }
+  .thumb { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #0a1018; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s ease, filter .3s; filter: saturate(.95) brightness(.92); }
+  a.card:hover .thumb img { transform: scale(1.035); filter: saturate(1.05) brightness(1); }
+  .thumb::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 45%, rgba(5,8,14,.92) 100%);
+  }
+  .body { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .title { font-size: 19px; font-weight: 600; letter-spacing: .06em; display: flex; align-items: center; gap: 10px; }
+  .tag {
+    font-size: 11px; font-weight: 400; letter-spacing: .1em; color: var(--accent);
+    border: 1px solid rgba(110,168,255,.4); border-radius: 20px; padding: 2px 9px;
+  }
+  .desc { color: var(--dim); font-size: 13.5px; line-height: 1.75; }
+  .meta { margin-top: auto; padding-top: 14px; color: rgba(143,162,184,.75); font-size: 12px; letter-spacing: .06em; display: flex; gap: 14px; flex-wrap: wrap; }
+  .meta b { color: rgba(200,220,240,.9); font-weight: 500; }
+  footer {
+    padding: 26px 28px 40px; text-align: center; color: rgba(143,162,184,.7);
+    font-size: 12px; line-height: 2; border-top: 1px solid rgba(140,180,230,.1);
+  }
+  footer a { color: rgba(160,190,225,.85); text-decoration: none; border-bottom: 1px dotted rgba(160,190,225,.4); }
+  footer a:hover { color: #fff; }
+  .note { max-width: 720px; margin: 0 auto 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>星河追梦 · 深空行星</h1>
+  <p class="sub">实时 3D 场景 · three.js 单文件 · 浏览器直接运行</p>
+</header>
+
+<main>
+  <a class="card" href="ground/dist/scene.html">
+    <div class="thumb"><img src="ground/screenshots/00-九机位总览.png" alt="地面场景" loading="lazy"></div>
+    <div class="body">
+      <div class="title">地面场景 <span class="tag">GROUND</span></div>
+      <p class="desc">
+        雨天滨海公路与长征五号发射工位。点火箭的任意部件，那一段会缓缓升起、
+        外壳变半透明，露出液氧/液氢贮箱、发动机与摆动伺服。右下角可以让塔臂外摆 90°。
+      </p>
+      <div class="meta"><span><b>9.7 MB</b> 单文件</span><span><b>60</b> fps</span><span>three r185</span></div>
+    </div>
+  </a>
+
+  <a class="card" href="space/dist/深空太阳系.html">
+    <div class="thumb"><img src="space/screenshots/00_overview.png" alt="深空场景" loading="lazy"></div>
+    <div class="body">
+      <div class="title">深空场景 <span class="tag">DEEP SPACE</span></div>
+      <p class="desc">
+        太阳与八大行星。大气是球形壳层单次散射，气态巨行星的条带是程序化 FBM，
+        点击行星可以看到真实直径、轨道与周期。浮动原点 + 对数深度撑住天文尺度。
+      </p>
+      <div class="meta"><span><b>5.6 MB</b> 单文件</span><span><b>60</b> fps</span><span>logarithmic depth</span></div>
+    </div>
+  </a>
+</main>
+
+<footer>
+  <p class="note">
+    首次打开会有几秒的加载（整个场景都内联在一个 HTML 里，不依赖任何 CDN）。
+    推荐 Chrome / Edge，Safari 16+ 亦可。
+  </p>
+  <p>
+    行星贴图 <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a>（CC BY 4.0）
+    · 地面材质 Poly Haven / ambientCG（CC0）· three.js（MIT）
+  </p>
+  <p><a href="https://github.com/Askfirefly/xinghe-zhumeng" target="_blank" rel="noopener">GitHub 仓库</a></p>
+</footer>
+
+</body>
+</html>
