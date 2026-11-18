@@ -1,0 +1,14 @@
+# 源码按 LF 存，跨平台一致
+* text=auto eol=lf
+
+# 单文件构建产物要求字节完全一致，禁止换行转换
+*.html  -text
+*.b64   -text
+*.cjs   -text
+
+# 二进制
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.mp3   binary
+*.webp  binary

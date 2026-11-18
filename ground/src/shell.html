@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>星河追梦</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d0b0e; overflow: hidden;
+    font-family: "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+  #scene { display: block; width: 100vw; height: 100vh; }
+  #boot { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center;
+    color: #dce8ed; background: #0d1117; transition: opacity .35s ease; pointer-events: none; }
+  #boot.done { opacity: 0; }
+  .boot-copy { width: min(280px, 72vw); text-align: center; font-size: 12px; letter-spacing: .08em; }
+  .boot-line { width: 42px; height: 2px; margin: 0 auto 18px; background: #d69045;
+    box-shadow: 0 0 14px rgba(214,144,69,.35); animation: bootpulse 1.2s ease-in-out infinite; }
+  #bootStatus { margin-top: 9px; color: #7893a0; font-size: 10px; letter-spacing: .04em; }
+  @keyframes bootpulse { 0%,100% { opacity: .35; transform: scaleX(.65); } 50% { opacity: 1; transform: scaleX(1); } }
+  #hud { position: fixed; left: 22px; bottom: 20px; color: #f4e7dd; font-size: 12px;
+    letter-spacing: .02em; user-select: none; pointer-events: none;
+    text-shadow: 0 1px 8px rgba(0,0,0,.55); transition: opacity .3s; }
+  #hud .title { font-size: 15px; font-weight: 600; letter-spacing: .12em; margin-bottom: 8px; opacity: .92; }
+  #hud .grid { display: grid; grid-template-columns: auto auto; gap: 3px 18px; opacity: .8;
+    font-variant-numeric: tabular-nums; }
+  #hud .grid span:nth-child(odd) { color: #cbb6a8; }
+  #hud .hint { margin-top: 10px; font-size: 11px; opacity: .45; letter-spacing: .04em; }
+  body.nohud #hud, body.nohud #compass { opacity: 0; display: none; }
+  .vig { position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 46%, rgba(0,0,0,0) 42%, rgba(0,0,0,.34) 100%); }
+  #err { position: fixed; inset: 0; display: none; place-content: center; padding: 40px;
+    color: #ffb4a0; background: #120d0d; font: 13px/1.6 ui-monospace, Consolas, monospace;
+    white-space: pre-wrap; overflow: auto; }
+
+  /* 播放提示 */
+  #playtoast { position: fixed; left: 50%; bottom: 118px; transform: translateX(-50%);
+    padding: 9px 18px; font-size: 12.5px; color: #ffe6cf; letter-spacing: .04em;
+    background: rgba(16,12,18,.55); border: 1px solid rgba(255,200,150,.35);
+    border-radius: 20px; backdrop-filter: blur(6px); z-index: 7; pointer-events: none;
+    animation: mpulse 1.8s ease-in-out infinite; }
+  #playtoast.gone { display: none; }
+  body.nohud #playtoast { display: none; }
+
+  /* 音乐播放器 */
+  #music { position: fixed; right: 20px; bottom: 96px; width: 236px; padding: 10px 12px;
+    font-size: 11px; color: #efe2d6; background: rgba(14,12,16,.42);
+    border: 1px solid rgba(255,236,220,.14); border-radius: 8px;
+    backdrop-filter: blur(6px); user-select: none; z-index: 6;
+    text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  #music .mtitle { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+  #music .mtitle b { font-size: 10.5px; font-weight: 600; color: #ffd9b8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #music #mState { color: #ffb070; font-size: 12px; }
+  #music #mState.on { animation: mpulse 1.6s ease-in-out infinite; }
+  @keyframes mpulse { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+  #music .mctl { display: flex; align-items: center; gap: 7px; }
+  #music button { padding: 3px 9px; font-size: 11px; white-space: nowrap; color: #f2e6da; cursor: pointer;
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,236,220,.16);
+    border-radius: 5px; font-family: inherit; }
+  #music button:hover { background: rgba(255,255,255,.16); }
+  #music #mVol { flex: 1; -webkit-appearance: none; height: 3px; border-radius: 2px;
+    background: rgba(255,255,255,.18); outline: none; cursor: pointer; }
+  #music #mVol::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px;
+    border-radius: 50%; background: #ffd9b8; cursor: grab; }
+  #music .mtip { margin-top: 6px; font-size: 10px; line-height: 1.45; color: #ffc79a; display: none; }
+  #music .mprog { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+  #music #mSeek { flex: 1; -webkit-appearance: none; height: 3px; border-radius: 2px;
+    background: rgba(255,255,255,.16); outline: none; cursor: pointer; }
+  #music #mSeek::-webkit-slider-thumb { -webkit-appearance: none; width: 9px; height: 9px;
+    border-radius: 50%; background: #ffd9b8; cursor: grab; }
+  #music #mTime { font-size: 9.5px; color: #c9b3a4; font-variant-numeric: tabular-nums;
+    white-space: nowrap; }
+  #music .mhint { margin-top: 7px; font-size: 10px; color: #ffb070;
+    animation: mpulse 1.5s ease-in-out infinite; }
+  #music .mhint.gone { display: none; }
+  body.nohud #music { display: none; }
+
+  /* 性能面板 */
+  #perf { position: fixed; right: 20px; top: 18px; width: 210px; padding: 10px 12px;
+    font-size: 11px; color: #efe2d6; background: rgba(14,12,16,.42);
+    border: 1px solid rgba(255,236,220,.14); border-radius: 8px;
+    backdrop-filter: blur(6px); user-select: none; z-index: 6;
+    text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  #perf .prow { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  #perf .pgpu { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+  #perf .pgpu span { color: #c9b3a4; font-size: 10px; letter-spacing: .08em; }
+  #perf .pgpu b { font-size: 10.5px; line-height: 1.35; color: #ffd9b8; font-weight: 600; }
+  #perf .prow span { color: #c9b3a4; }
+  #perf .pbtns { display: flex; gap: 6px; margin-top: 8px; }
+  #perf button { flex: 1; padding: 4px 0; font-size: 11px; color: #f2e6da; cursor: pointer;
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,236,220,.16);
+    border-radius: 5px; font-family: inherit; }
+  #perf button:hover { background: rgba(255,255,255,.16); }
+  #perf button.on { background: rgba(255,170,110,.30); border-color: rgba(255,190,140,.6); }
+  #perf .phint { margin-top: 7px; font-size: 10px; line-height: 1.5; color: #ffc79a; opacity: .9; }
+  body.nohud #perf { display: none; }
+
+  /* 时间条 */
+  #timebar { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+    width: min(52vw, 760px); user-select: none; z-index: 5; }
+  #timebar .tlabel { display: flex; justify-content: space-between; font-size: 10px;
+    color: rgba(255,238,224,.62); letter-spacing: .08em; margin-bottom: 6px; }
+  #timebar #tcur { color: #ffcf9e; font-weight: 600; }
+  #tslider { -webkit-appearance: none; appearance: none; width: 100%; height: 3px;
+    border-radius: 2px; background: linear-gradient(90deg, #1b2740, #6f4f6e, #ff7a3a, #2a2038);
+    outline: none; cursor: pointer; }
+  #tslider::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px;
+    border-radius: 50%; background: #ffe0bd; border: 1px solid rgba(0,0,0,.4);
+    box-shadow: 0 0 8px rgba(255,190,120,.8); cursor: grab; }
+  body.nohud #timebar { display: none; }
+
+  /* 左下角罗盘 */
+  #compass { position: fixed; left: 24px; bottom: 226px; width: 84px; height: 84px;
+    user-select: none; pointer-events: none; transition: opacity .3s; }
+  #compass .ring { position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid rgba(255, 236, 220, .38);
+    box-shadow: inset 0 0 14px rgba(0,0,0,.35); }
+  #compass .ring:after { content: ""; position: absolute; inset: 11px; border-radius: 50%;
+    border: 1px dashed rgba(255, 236, 220, .14); }
+  #compass .lbl { position: absolute; font-size: 9px; color: rgba(255,238,224,.82);
+    transform: translate(-50%, -50%); letter-spacing: .05em; }
+  #compass .n { left: 50%; top: 8px; color: #ff9f6a; font-weight: 600; }
+  #compass .s { left: 50%; top: 92%; opacity: .55; }
+  #compass .e { left: 92%; top: 50%; opacity: .55; }
+  #compass .w { left: 8%; top: 50%; opacity: .55; }
+  #needle { position: absolute; left: 50%; top: 50%; width: 2px; height: 28px;
+    margin-left: -1px; margin-top: -28px; transform-origin: 50% 100%;
+    background: linear-gradient(to top, rgba(255,150,90,0), #ffb27a);
+    border-radius: 1px; }
+  #needle:after { content: ""; position: absolute; left: -2px; top: -3px; border-left: 3px solid transparent;
+    border-right: 3px solid transparent; border-bottom: 5px solid #ffb27a; }
+  #hdg { position: absolute; left: 50%; top: 104%; transform: translateX(-50%);
+    font-size: 10px; color: rgba(255,238,224,.75); font-variant-numeric: tabular-nums; }
+
+  /* 运载器控制台 */
+  #rocketConsole { position: fixed; left: 20px; top: 18px; width: 292px; z-index: 8;
+    max-height: calc(100vh - 250px); overflow: auto; scrollbar-width: thin;
+    color: #dce8ed; background: linear-gradient(145deg, rgba(12,22,30,.91), rgba(8,14,21,.82));
+    border: 1px solid rgba(139,184,203,.28); border-radius: 10px;
+    box-shadow: 0 14px 42px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.035);
+    backdrop-filter: blur(12px); user-select: none; font-size: 11px; }
+  #rocketConsole.collapsed { max-height: none; overflow: hidden; }
+  #rocketConsole.collapsed .rc-body { display: none; }
+  .rc-head { display: flex; align-items: center; min-height: 44px; padding: 7px 12px 6px 14px; }
+  .rc-headcopy { flex: 1; min-width: 0; }
+  .rc-kicker { color: #7f9ca9; font-size: 8px; letter-spacing: .20em; text-transform: uppercase; }
+  .rc-title { margin-top: 3px; color: #edf5f6; font-size: 14px; font-weight: 600; letter-spacing: .10em; }
+  .rc-live { display: inline-block; width: 5px; height: 5px; margin-right: 6px; border-radius: 50%;
+    background: #d69045; box-shadow: 0 0 8px rgba(214,144,69,.7); vertical-align: 1px; }
+  #rcCollapse { width: 28px; height: 28px; padding: 0; border: 1px solid rgba(139,184,203,.18);
+    border-radius: 5px; color: #a8c0ca; background: rgba(255,255,255,.035); cursor: pointer; }
+  #rcCollapse:hover { background: rgba(139,184,203,.12); }
+  .rc-body { padding: 0 12px 9px; }
+  .rc-section { padding: 7px 0; border-top: 1px solid rgba(139,184,203,.13); }
+  .rc-section-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
+    color: #8faab5; font-size: 9px; letter-spacing: .13em; }
+  .rc-section-title span:last-child { color: #5f7b87; letter-spacing: .04em; }
+  #rocketSelect { width: 100%; height: 31px; padding: 0 32px 0 10px; color: #e6f0f2;
+    background: #101f2a; border: 1px solid rgba(139,184,203,.28); border-radius: 5px;
+    outline: none; cursor: pointer; font: 11px "Segoe UI", "Microsoft YaHei", sans-serif; }
+  #rocketSelect:focus { border-color: rgba(214,144,69,.72); }
+  .rc-model-meta { display: flex; justify-content: space-between; margin-top: 5px; color: #718d99; font-size: 8px; }
+  .rc-parts { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .partBtn { display: flex; align-items: center; min-width: 0; height: 27px; padding: 0 7px;
+    color: #a9bdc5; background: rgba(125,163,180,.045); border: 1px solid rgba(139,184,203,.13);
+    border-radius: 4px; cursor: pointer; text-align: left; transition: background .18s, border-color .18s, color .18s; }
+  .partBtn:hover { color: #e6f0f2; background: rgba(125,163,180,.12); border-color: rgba(139,184,203,.32); }
+  .partBtn.active { color: #ffe0b6; background: rgba(198,119,48,.15); border-color: rgba(214,144,69,.55); }
+  .partBtn .rc-index { width: 20px; color: #587681; font: 8px ui-monospace, Consolas, monospace; }
+  .partBtn.active .rc-index { color: #c68a52; }
+  .partBtn .rc-part-name { flex: 1; white-space: nowrap; }
+  .partBtn .rc-part-state { width: 5px; height: 5px; border-radius: 50%; background: #38515c; }
+  .partBtn.active .rc-part-state { background: #e69a4d; box-shadow: 0 0 6px rgba(230,154,77,.75); }
+  .rc-readout { min-height: 30px; margin-top: 6px; padding: 5px 8px; border-left: 2px solid #466879;
+    background: rgba(80,112,126,.07); color: #7f9ca8; font-size: 9.5px; line-height: 1.4; }
+  .rc-readout.active { border-left-color: #d69045; color: #b9cbd1; }
+  .rc-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 6px; }
+  .rc-actions button, #armBtn { height: 28px; border-radius: 4px; cursor: pointer;
+    color: #b9cbd1; background: rgba(125,163,180,.07); border: 1px solid rgba(139,184,203,.20); }
+  .rc-actions button:hover, #armBtn:hover { background: rgba(125,163,180,.15); }
+  .rc-actions button:disabled { opacity: .38; cursor: default; }
+  #asmBtn { color: #e3c49f; border-color: rgba(214,144,69,.26); }
+  .rc-arm-row { display: flex; align-items: center; gap: 9px; }
+  #armBtn { flex: 1; color: #e3c49f; border-color: rgba(214,144,69,.30); }
+  #armAngle { min-width: 42px; color: #f0c58f; text-align: right; font: 12px ui-monospace, Consolas, monospace; }
+  #armRange { -webkit-appearance: none; appearance: none; width: 100%; height: 3px; margin: 9px 0 4px;
+    border-radius: 2px; background: linear-gradient(90deg, #314d5c, #b47742); outline: none; cursor: pointer; }
+  #armRange::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%;
+    background: #e4c49c; border: 1px solid #5b4431; box-shadow: 0 0 7px rgba(214,144,69,.45); }
+  .rc-arm-scale { display: flex; justify-content: space-between; color: #54717e; font-size: 8px; }
+  .rc-status { display: flex; align-items: center; justify-content: space-between; padding-top: 6px;
+    border-top: 1px solid rgba(139,184,203,.13); color: #6f8b96; font-size: 8px; }
+  #consoleStatus { color: #9bb2ba; }
+  body.nohud #rocketConsole, body.nohud #rocketLabels, body.nohud #padHint { display: none; }
+  @media (max-width: 700px) {
+    #rocketConsole { left: 10px; top: 10px; width: min(280px, calc(100vw - 20px)); max-height: 48vh; }
+    #perf { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="boot" role="status" aria-live="polite">
+  <div class="boot-copy"><div class="boot-line"></div><div>正在生成三维场景</div><div id="bootStatus">初始化几何与材质</div></div>
+</div>
+<div class="vig"></div>
+
+<div id="music">
+  <div class="mtitle"><span id="mState">♪</span><b id="mName">星河追梦 (Beyond the Stars)</b></div>
+  <div class="mprog">
+    <input id="mSeek" type="range" min="0" max="1000" value="0" step="1" title="拖动跳转">
+    <span id="mTime">0:00 / 0:00</span>
+  </div>
+  <div class="mctl">
+    <button id="mPlay" title="播放/暂停 (M)">▶</button>
+    <input id="mVol" type="range" min="0" max="100" value="72" title="音量">
+    <button id="mPick" title="选择本地音乐">选曲</button>
+  </div>
+  <div id="mhint" class="mhint">点一下画面开始播放音乐</div>
+  <input id="mFile" type="file" accept="audio/*" hidden>
+  <div id="mTip" class="mtip"></div>
+</div>
+
+<div id="perf">
+  <div class="pgpu"><span>显卡</span><b id="gpuName">—</b></div>
+  <div class="prow"><span>帧率</span><b id="pFps">—</b></div>
+  <div class="prow"><span>分辨率</span><b id="pRes">100%</b></div>
+  <div class="pbtns">
+    <button data-q="low">低</button><button data-q="mid">中</button><button data-q="high">高</button>
+  </div>
+  <div id="gpuHint" class="phint"></div>
+</div>
+
+<div id="playtoast">点击画面任意处开始播放音乐</div>
+
+<section id="rocketConsole" aria-label="运载器控制台">
+  <div class="rc-head">
+    <div class="rc-headcopy">
+      <div class="rc-kicker">Launch vehicle control</div>
+      <div class="rc-title"><span class="rc-live"></span>运载器控制台</div>
+    </div>
+    <button id="rcCollapse" type="button" aria-label="收起控制台" aria-expanded="true">−</button>
+  </div>
+  <div class="rc-body">
+    <div class="rc-section">
+      <div class="rc-section-title"><span>01 / 火箭选择</span><span>型号库 01</span></div>
+      <select id="rocketSelect" aria-label="选择火箭型号"></select>
+      <div class="rc-model-meta"><span>两级半构型 · 四枚助推器</span><span>CZ-5</span></div>
+    </div>
+    <div class="rc-section">
+      <div class="rc-section-title"><span>02 / 结构分解</span><span>多部件独立展开</span></div>
+      <div class="rc-parts">
+        <button class="partBtn" type="button" data-part="fairing" aria-pressed="false"><span class="rc-index">01</span><span class="rc-part-name">整流罩</span><span class="rc-part-state"></span></button>
+        <button class="partBtn" type="button" data-part="upper" aria-pressed="false"><span class="rc-index">02</span><span class="rc-part-name">氢氧二级</span><span class="rc-part-state"></span></button>
+        <button class="partBtn" type="button" data-part="core" aria-pressed="false"><span class="rc-index">03</span><span class="rc-part-name">芯一级</span><span class="rc-part-state"></span></button>
+        <button class="partBtn" type="button" data-part="boost0" aria-pressed="false"><span class="rc-index">04</span><span class="rc-part-name">助推器 A</span><span class="rc-part-state"></span></button>
+        <button class="partBtn" type="button" data-part="boost1" aria-pressed="false"><span class="rc-index">05</span><span class="rc-part-name">助推器 B</span><span class="rc-part-state"></span></button>
+        <button class="partBtn" type="button" data-part="boost2" aria-pressed="false"><span class="rc-index">06</span><span class="rc-part-name">助推器 C</span><span class="rc-part-state"></span></button>
+        <button class="partBtn" type="button" data-part="boost3" aria-pressed="false"><span class="rc-index">07</span><span class="rc-part-name">助推器 D</span><span class="rc-part-state"></span></button>
+      </div>
+      <div id="partReadout" class="rc-readout">选择部件，控制分离展开并查看内部结构。</div>
+      <div class="rc-actions">
+        <button id="explodeBtn" type="button" title="从整流罩开始，自上而下自动解体">一键解体</button>
+        <button id="asmBtn" type="button" disabled>全部合体</button>
+        <button id="rcReset" type="button">复位状态</button>
+      </div>
+    </div>
+    <div class="rc-section">
+      <div class="rc-section-title"><span>03 / 回转塔架</span><span>12 秒缓动</span></div>
+      <div class="rc-arm-row"><button id="armBtn" type="button">张开塔架</button><span id="armAngle">000°</span></div>
+      <input id="armRange" type="range" min="0" max="90" value="0" step="1" aria-label="塔架回转角度">
+      <div class="rc-arm-scale"><span>00° 合拢</span><span>机械回转</span><span>90° 张开</span></div>
+    </div>
+    <div class="rc-status"><span id="consoleStatus">系统就绪</span><span>LOCAL CONTROL</span></div>
+  </div>
+</section>
+
+<script id="dustB64" type="text/plain">__DUSTB64__</script>
+<script id="tex_rock_diff" type="text/plain">__TEX_ROCK_DIFF__</script>
+<script id="tex_rock_nor" type="text/plain">__TEX_ROCK_NOR__</script>
+<script id="tex_rock_rough" type="text/plain">__TEX_ROCK_ROUGH__</script>
+<script id="tex_road_diff" type="text/plain">__TEX_ROAD_DIFF__</script>
+<script id="tex_road_nor" type="text/plain">__TEX_ROAD_NOR__</script>
+<script id="tex_road_rough" type="text/plain">__TEX_ROAD_ROUGH__</script>
+<script id="tex_gnd_diff" type="text/plain">__TEX_GND_DIFF__</script>
+<script id="tex_gnd_nor" type="text/plain">__TEX_GND_NOR__</script>
+<script id="tex_gnd_rough" type="text/plain">__TEX_GND_ROUGH__</script>
+<script id="tex_met_diff" type="text/plain">__TEX_MET_DIFF__</script>
+<script id="tex_met_nor" type="text/plain">__TEX_MET_NOR__</script>
+<script id="tex_met_rough" type="text/plain">__TEX_MET_ROUGH__</script>
+<script id="tex_pnt_diff" type="text/plain">__TEX_PNT_DIFF__</script>
+<script id="tex_pnt_nor" type="text/plain">__TEX_PNT_NOR__</script>
+<script id="tex_pnt_rough" type="text/plain">__TEX_PNT_ROUGH__</script>
+<script id="tex_water_nor" type="text/plain">__TEX_WATER_NOR__</script>
+<script id="tex_grs_diff" type="text/plain">__TEX_GRS_DIFF__</script>
+<script id="tex_grs_nor" type="text/plain">__TEX_GRS_NOR__</script>
+<script id="armLumB64" type="text/plain">__ARMLUM__</script>
+
+<div id="timebar">
+  <div class="tlabel"><span>昼夜时间</span><span id="tcur">18:00</span><span>次日 06:00</span></div>
+  <input id="tslider" type="range" min="0" max="1440" value="1050" step="1">
+</div>
+
+<div id="compass">
+  <div class="ring"></div>
+  <div class="lbl n">N</div><div class="lbl e">E</div><div class="lbl s">S</div><div class="lbl w">W</div>
+  <div id="needle"></div>
+  <div id="hdg">000°</div>
+</div>
+
+<div id="hud">
+  <div class="title">星 河 追 梦</div>
+  <div class="grid">
+    <span>时间</span><b id="v-clock">18:00</b>
+    <span>时段</span><b id="v-phase">晨昏</b>
+    <span>风力</span><b id="v-gust">9 级</b>
+    <span>风速</span><b id="v-wspeed">23.0 m/s</b>
+    <span>风向</span><b id="v-wdir">固定 36°</b>
+    <span>雨况</span><b id="v-rain">中雨 · 斜落</b>
+    <span>太阳高度</span><b id="v-sun">7.4°</b>
+    <span>帧率</span><b id="v-fps">—</b>
+  </div>
+  <div class="hint">拖动 视角 · 滚轮 焦距 · 底部时间条可拖 · P 暂停 · [ ] 时间流速 · 1/2/3 机位 · R 复位 · H 隐藏</div>
+</div>
+
+<div id="err"></div>
+<div id="cerr" style="display:none"></div>
+<script>
+(function(){
+  var o = console.error;
+  console.error = function(){ var el = document.getElementById("cerr"); if (el) el.textContent += Array.prototype.slice.call(arguments).join(" ") + " ||| "; o.apply(console, arguments); };
+})();
+window.addEventListener('error', function (e) {
+  var el = document.getElementById('err');
+  el.style.display = 'grid';
+  el.textContent = 'RUNTIME ERROR\n\n' + (e.error && e.error.stack || e.message);
+  document.title = 'ERR: ' + e.message;
+});
+</script>
+
+<!-- three.js r185 (CJS bundle, inlined for offline single-file use) -->
+<script>
+(function (exports) {
+/*__THREE__*/
+})(window.__threeExports = {});
+window.THREE = window.__threeExports;
+</script>
+
+<!-- scene -->
+<script>
+requestAnimationFrame(() => requestAnimationFrame(() => {
+/*__APP__*/
+}));
+</script>
+</body>
+</html>
