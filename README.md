@@ -9,6 +9,17 @@
 
 两个都是 **three.js r185 + 全内联单文件 HTML**：双击就能开，不需要服务器、不需要网络。
 
+## 在线预览
+
+| 场景 | 地址 |
+|---|---|
+| 入口页 | **https://askfirefly.github.io/xinghe-zhumeng/** |
+| 地面 · 星河追梦 | https://askfirefly.github.io/xinghe-zhumeng/ground/dist/scene.html |
+| 深空 · 太阳系 | https://askfirefly.github.io/xinghe-zhumeng/space/dist/深空太阳系.html |
+
+> 首次打开要等下载：地面 9.7 MB / gzip 后约 5.9 MB，深空 5.8 MB / gzip 后约 3.1 MB。
+> GitHub Pages 会自动 gzip，一般 3–10 秒能进。慢网下会看到加载页停留较久，这是文件体积决定的，不是卡死。
+
 ---
 
 ## 直接看
